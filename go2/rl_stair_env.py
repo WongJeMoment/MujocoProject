@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import math
+from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -11,80 +11,21 @@ import mujoco
 import numpy as np
 from gymnasium import spaces
 
+from policy_contract import (
+    HOME,
+    JOINT_NAMES,
+    KD,
+    KP,
+    OBSERVATION_SIZE,
+    build_observation,
+    nominal_gait_targets,
+    projected_gravity,
+    quat_rotate_inverse,
+)
+
 
 MODEL_PATH = Path(__file__).parent / "official_mjcf" / "scene.xml"
-LEG_NAMES = ("FR", "FL", "RR", "RL")
-JOINT_NAMES = tuple(
-    f"{leg}_{joint}_joint"
-    for leg in LEG_NAMES
-    for joint in ("hip", "thigh", "calf")
-)
-HOME = np.array((0.0, 0.9, -1.8) * 4, dtype=np.float32)
-KP = np.array((55.0, 65.0, 78.0) * 4, dtype=np.float32)
-KD = np.array((2.5, 3.2, 3.5) * 4, dtype=np.float32)
 STEP_XS = np.array([1.2, 1.6, 2.3, 2.6, 2.8, 3.0, 3.2, 3.4], dtype=np.float32)
-ACTION_SCALE = np.array((0.18, 0.28, 0.34) * 4, dtype=np.float32)
-
-
-def _quat_rotate_inverse(quat: np.ndarray, vec: np.ndarray) -> np.ndarray:
-    w, x, y, z = quat
-    q_xyz = np.array([x, y, z], dtype=np.float32)
-    t = 2.0 * np.cross(q_xyz, vec)
-    return vec - w * t + np.cross(q_xyz, t)
-
-
-def _leg_cycle(
-    phase: float, duty_factor: float, lift_bias: float = 0.0
-) -> tuple[float, float]:
-    if phase < duty_factor:
-        stance = phase / duty_factor
-        sweep = 1.0 - 2.0 * stance
-        lift = 0.0
-    else:
-        swing = (phase - duty_factor) / (1.0 - duty_factor)
-        sweep = -1.0 + 2.0 * swing
-        lift = math.sin(math.pi * swing) ** (1.2 + lift_bias)
-    return sweep, lift
-
-
-def nominal_gait_targets(sim_time: float, obstacle_mode: bool) -> np.ndarray:
-    if obstacle_mode:
-        frequency = 1.00
-        duty_factor = 0.80
-        stride = 0.24
-        lift_gain = 0.86
-        hip_sway = 0.06
-        phase_offsets = (0.00, 0.50, 0.75, 0.25)
-    else:
-        frequency = 1.45
-        duty_factor = 0.68
-        stride = 0.18
-        lift_gain = 0.36
-        hip_sway = 0.035
-        phase_offsets = (0.00, 0.50, 0.50, 0.00)
-
-    base_thigh = 0.92
-    base_calf = -1.84
-    targets: list[float] = []
-
-    for leg, phase_offset in enumerate(phase_offsets):
-        phase = (max(sim_time - 0.5, 0.0) * frequency + phase_offset) % 1.0
-        sweep, step_lift = _leg_cycle(
-            phase, duty_factor, lift_bias=0.25 if obstacle_mode else 0.0
-        )
-        side_sign = -1.0 if leg in (0, 2) else 1.0
-        is_front = leg in (0, 1)
-        front_reach = 0.10 if is_front else 0.04
-        extra_lift = (
-            0.18 if (obstacle_mode and is_front) else 0.08 if obstacle_mode else 0.0
-        )
-
-        hip = side_sign * hip_sway * step_lift
-        thigh = base_thigh - stride * sweep - (0.16 + front_reach) * step_lift
-        calf = base_calf + 0.16 * sweep - (lift_gain + extra_lift) * step_lift
-        targets.extend((hip, thigh, calf))
-
-    return np.asarray(targets, dtype=np.float32)
 
 
 @dataclass(slots=True)
