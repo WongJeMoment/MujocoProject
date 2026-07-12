@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 from pathlib import Path
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.monitor import Monitor
 
 from rl_stair_env import Go2StairEnv
 
@@ -38,9 +40,19 @@ def main() -> None:
 
     check_env(Go2StairEnv(), warn=True)
     env = make_vec_env(Go2StairEnv, n_envs=args.num_envs)
-    eval_env = Go2StairEnv()
+    eval_env = Monitor(Go2StairEnv())
     checkpoint_dir = args.output.parent / "ppo_logs"
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    tensorboard_log = None
+    if importlib.util.find_spec("tensorboard") is not None:
+        tensorboard_log = str(checkpoint_dir / "tensorboard")
+    else:
+        print("TensorBoard is not installed; continuing without TensorBoard logs.")
+    show_progress = all(
+        importlib.util.find_spec(package) is not None for package in ("tqdm", "rich")
+    )
+    if not show_progress:
+        print("rich/tqdm is not installed; continuing without the progress bar.")
 
     model = PPO(
         "MlpPolicy",
@@ -54,7 +66,7 @@ def main() -> None:
         ent_coef=0.01,
         vf_coef=0.5,
         max_grad_norm=0.5,
-        tensorboard_log=str(checkpoint_dir / "tensorboard"),
+        tensorboard_log=tensorboard_log,
         device=args.device,
         verbose=1,
     )
@@ -75,7 +87,11 @@ def main() -> None:
         ),
     ]
 
-    model.learn(total_timesteps=args.timesteps, callback=callbacks, progress_bar=True)
+    model.learn(
+        total_timesteps=args.timesteps,
+        callback=callbacks,
+        progress_bar=show_progress,
+    )
     model.save(str(args.output))
     env.close()
     eval_env.close()
