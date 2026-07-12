@@ -28,5 +28,56 @@ For a reinforcement-learning solution, install `gymnasium` and
 After training, run the learned policy with:
 `python go2/run_trained_policy.py --model go2/checkpoints/go2_stair_ppo.zip`
 
+## GO2 sim-to-real
+
+The stair environment enables domain randomization during training (mass,
+inertia, friction, damping, motor strength, observation noise, and action
+delay). Because the deployable observation contract now uses body-frame IMU
+angular velocity, retrain a new model before using the hardware runner:
+
+```bash
+python go2/train_ppo.py --timesteps 1000000 \
+  --output go2/checkpoints/go2_sim2real_ppo
+```
+
+Test the complete policy/control loop without a robot:
+
+```bash
+python go2/run_unitree_policy.py --mock --duration 10 \
+  --model go2/checkpoints/go2_sim2real_ppo.zip
+```
+
+For a real GO2, install Unitree's official `unitree_sdk2_python` package in the
+same environment and connect the computer to the robot's wired network. The
+runner subscribes to `rt/lowstate` and `rt/sportmodestate`. It remains in
+dry-run mode unless motor control is explicitly confirmed:
+
+```bash
+# State/policy check only; no low-level command is published.
+python go2/run_unitree_policy.py --network-interface eth0 \
+  --model go2/checkpoints/go2_sim2real_ppo.zip
+
+# Only after suspended-robot testing, emergency-stop preparation, and
+# disabling the conflicting Unitree sport service.
+python go2/run_unitree_policy.py --network-interface eth0 \
+  --model go2/checkpoints/go2_sim2real_ppo.zip \
+  --event-port 17001 --enable-motors --confirm REAL_GO2
+```
+
+An EVK4/Metavision detector can import `EventDistancePublisher` from
+`go2/send_event_distance.py` and publish metric stair distance plus confidence.
+The following command sends a synthetic 0.45 m detection for interface tests:
+
+```bash
+python go2/send_event_distance.py --distance 0.45 --confidence 0.9 \
+  --duration 5 --port 17001
+```
+
+The real-robot runner uses a slow startup interpolation, reduced gains/action
+scale, communication timeout, joint limits, velocity limits, tilt protection,
+target-jump protection, and a damping stop. Keep the robot suspended for the
+first motor-enabled test; these software checks do not replace a physical
+emergency stop.
+
 The original simplified XML files are kept at the top level of each robot
 directory for comparison. The Python demos load `official_mjcf/scene.xml`.
