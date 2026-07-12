@@ -40,7 +40,7 @@ def main() -> None:
 
     check_env(Go2StairEnv(), warn=True)
     env = make_vec_env(Go2StairEnv, n_envs=args.num_envs)
-    eval_env = Monitor(Go2StairEnv())
+    eval_env = Monitor(Go2StairEnv(domain_randomization=False))
     checkpoint_dir = args.output.parent / "ppo_logs"
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
     tensorboard_log = None
