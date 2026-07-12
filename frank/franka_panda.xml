@@ -1,0 +1,98 @@
+<mujoco model="franka_emika_panda">
+  <compiler angle="radian" autolimits="true"/>
+  <option timestep="0.002" gravity="0 0 -9.81" integrator="implicitfast">
+    <flag contact="enable"/>
+  </option>
+
+  <default>
+    <joint damping="1.2" armature="0.08" frictionloss="0.05"/>
+    <geom condim="4" friction="0.8 0.1 0.01" density="700" rgba="0.82 0.84 0.88 1"/>
+    <position kp="180" kv="35" ctrllimited="true" forcelimited="true"/>
+    <default class="finger">
+      <joint type="slide" axis="0 1 0" range="0 0.04" damping="2" armature="0.01"/>
+      <geom type="box" size="0.012 0.009 0.055" density="500" rgba="0.15 0.16 0.18 1"/>
+      <position kp="400" kv="30" ctrlrange="0 0.04" forcerange="-40 40"/>
+    </default>
+  </default>
+
+  <visual>
+    <headlight ambient="0.35 0.35 0.35" diffuse="0.75 0.75 0.75" specular="0.2 0.2 0.2"/>
+    <rgba haze="0.15 0.25 0.35 1"/>
+    <global azimuth="135" elevation="-25"/>
+  </visual>
+
+  <asset>
+    <texture name="floor_tex" type="2d" builtin="checker" rgb1="0.20 0.24 0.27" rgb2="0.12 0.15 0.17" width="512" height="512"/>
+    <material name="floor_mat" texture="floor_tex" texrepeat="4 4" reflectance="0.15"/>
+    <material name="white" rgba="0.88 0.90 0.92 1"/>
+    <material name="dark" rgba="0.12 0.14 0.16 1"/>
+    <material name="accent" rgba="0.08 0.52 0.70 1"/>
+  </asset>
+
+  <worldbody>
+    <light pos="1.5 -1.5 2.8" dir="-0.5 0.5 -1" directional="true"/>
+    <geom name="floor" type="plane" size="2 2 0.05" material="floor_mat" density="0"/>
+    <geom name="table" type="box" pos="0 0 0.35" size="0.65 0.85 0.35" density="0" rgba="0.33 0.25 0.18 1"/>
+    <camera name="overview" pos="1.65 -1.65 1.45" xyaxes="0.707 0.707 0 -0.32 0.32 0.89"/>
+
+    <body name="panda_link0" pos="0 0 0.70">
+      <geom type="cylinder" size="0.09 0.07" pos="0 0 0.07" material="dark"/>
+      <body name="panda_link1" pos="0 0 0.14">
+        <joint name="panda_joint1" type="hinge" axis="0 0 1" range="-2.8973 2.8973"/>
+        <geom type="capsule" fromto="0 0 0 0 0 0.19" size="0.065" material="white"/>
+        <body name="panda_link2" pos="0 0 0.19" quat="0.707107 -0.707107 0 0">
+          <joint name="panda_joint2" type="hinge" axis="0 0 1" range="-1.7628 1.7628"/>
+          <geom type="capsule" fromto="0 0 0 0 0 0.14" size="0.06" material="dark"/>
+          <body name="panda_link3" pos="0 0 0.14" quat="0.707107 0.707107 0 0">
+            <joint name="panda_joint3" type="hinge" axis="0 0 1" range="-2.8973 2.8973"/>
+            <geom type="capsule" fromto="0 0 0 0 0.0825 0.20" size="0.055" material="white"/>
+            <body name="panda_link4" pos="0 0.0825 0.20" quat="0.707107 0.707107 0 0">
+              <joint name="panda_joint4" type="hinge" axis="0 0 1" range="-3.0718 -0.0698"/>
+              <geom type="capsule" fromto="0 0 0 0 -0.0825 0.18" size="0.052" material="dark"/>
+              <body name="panda_link5" pos="0 -0.0825 0.18" quat="0.707107 -0.707107 0 0">
+                <joint name="panda_joint5" type="hinge" axis="0 0 1" range="-2.8973 2.8973"/>
+                <geom type="capsule" fromto="0 0 0 0 0 0.20" size="0.048" material="white"/>
+                <body name="panda_link6" pos="0 0 0.20" quat="0.707107 0.707107 0 0">
+                  <joint name="panda_joint6" type="hinge" axis="0 0 1" range="-0.0175 3.7525"/>
+                  <geom type="capsule" fromto="0 0 0 0.088 0 0.10" size="0.045" material="dark"/>
+                  <body name="panda_link7" pos="0.088 0 0.10" quat="0.707107 0.707107 0 0">
+                    <joint name="panda_joint7" type="hinge" axis="0 0 1" range="-2.8973 2.8973"/>
+                    <geom type="cylinder" size="0.055 0.06" pos="0 0 0.06" material="white"/>
+                    <body name="panda_hand" pos="0 0 0.12">
+                      <geom type="box" size="0.055 0.075 0.025" material="dark"/>
+                      <site name="grasp_site" pos="0 0 0.115" size="0.012" rgba="0.08 0.8 0.25 1"/>
+                      <body name="panda_leftfinger" pos="0 0.045 0.07">
+                        <joint name="panda_finger_joint1" class="finger"/>
+                        <geom class="finger" pos="0 0 0.04"/>
+                      </body>
+                      <body name="panda_rightfinger" pos="0 -0.045 0.07">
+                        <joint name="panda_finger_joint2" class="finger" axis="0 -1 0"/>
+                        <geom class="finger" pos="0 0 0.04"/>
+                      </body>
+                    </body>
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <position name="joint1" joint="panda_joint1" ctrlrange="-2.8973 2.8973" forcerange="-87 87"/>
+    <position name="joint2" joint="panda_joint2" ctrlrange="-1.7628 1.7628" forcerange="-87 87"/>
+    <position name="joint3" joint="panda_joint3" ctrlrange="-2.8973 2.8973" forcerange="-87 87"/>
+    <position name="joint4" joint="panda_joint4" ctrlrange="-3.0718 -0.0698" forcerange="-87 87"/>
+    <position name="joint5" joint="panda_joint5" ctrlrange="-2.8973 2.8973" forcerange="-12 12"/>
+    <position name="joint6" joint="panda_joint6" ctrlrange="-0.0175 3.7525" forcerange="-12 12"/>
+    <position name="joint7" joint="panda_joint7" ctrlrange="-2.8973 2.8973" forcerange="-12 12"/>
+    <position name="finger1" joint="panda_finger_joint1" class="finger"/>
+    <position name="finger2" joint="panda_finger_joint2" class="finger"/>
+  </actuator>
+
+  <keyframe>
+    <key name="home" qpos="0 -0.55 0 -2.25 0 1.75 0.78 0.02 0.02" ctrl="0 -0.55 0 -2.25 0 1.75 0.78 0.02 0.02"/>
+  </keyframe>
+</mujoco>

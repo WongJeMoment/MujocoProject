@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# VS Code
+.vscode/
+
+# Environment and secrets
+.env
+*.key
+*.pem
+
+# MuJoCo / training outputs
+logs/
+runs/
+results/
+outputs/
+checkpoints/
+wandb/
+tensorboard/
+*.pt
+*.pth
+*.ckpt
+
+# System
+.DS_Store
+Thumbs.db
